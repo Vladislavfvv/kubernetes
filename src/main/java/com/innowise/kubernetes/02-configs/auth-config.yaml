@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: auth-config
-  namespace: payment-system
+  namespace: microservices
 data:
   #Settings for apps:
   spring.application.name: "authentication-service"

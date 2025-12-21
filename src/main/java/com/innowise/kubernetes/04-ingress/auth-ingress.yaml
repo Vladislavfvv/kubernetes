@@ -2,24 +2,23 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: auth-ingress
-  namespace: payment-system
+  namespace: microservices
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
-    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: nginx
   rules:
     - host: auth.payments.local  # Локальный домен для Minikube
       http:
         paths:
-          - path: /api/auth(/|$)(.*)
+          - path: /api/auth
             pathType: Prefix
             backend:
               service:
                 name: authentication-service
                 port:
                   number: 8081
-          - path: /actuator/health
+          - path: /actuator
             pathType: Prefix
             backend:
               service:
