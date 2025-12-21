@@ -1,1 +1,18 @@
-dfdf
+# Windows (через Chocolatey)
+choco install minikube
+
+# Или скачать с официального сайта
+# https://minikube.sigs.k8s.io/docs/start/
+
+
+# Запуск с нужными аддонами
+minikube start --cpus=4 --memory=8192 --disk-size=20g
+
+# Включить необходимые аддоны
+minikube addons enable ingress
+minikube addons enable metrics-server
+minikube addons enable dashboard
+
+# Проверить статус
+minikube status
+kubectl get nodes

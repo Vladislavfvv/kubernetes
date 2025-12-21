@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-config
+  namespace: payment-system
+data:
+  #Settings for apps:
+  spring.application.name: "authentication-service"
+  server.port: "8081"
+  #user.service.url: "http://user-service:8080"
+  #payment.service.url: "http://payment-service:8080"
+  #order.service.url: "http://order-service:8080"
+
+  #Профиль Spring
+  spring.profiles.active: "kubernetes"

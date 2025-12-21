@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authentication-service
+  namespace: payment-system
+  labels:
+    app: authentication-service
+    component: microservice
+spec:
+  replicas: 2  # Можно начать с 1
+  selector:
+    matchLabels:
+      app: authentication-service
+  template:
+    metadata:
+      labels:
+        app: authentication-service
+        component: microservice
+    spec:
+      # Init container для ожидания БД (аналог depends_on в docker-compose)
+      initContainers:
+        - name: wait-for-database
+          image: busybox:1.35
+          command: ['sh', '-c', 'until nc -z auth-postgres-service 5432; do echo "Waiting for PostgreSQL..."; sleep 2; done']
+      containers:
+        - name: authentication-service
+          image: your-registry/authentication-service:latest  # Замените на ваш образ
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+              name: http
+          env:
+            # Конфигурация из ConfigMap
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-config
+                  key: spring.profiles.active
+            - name: SERVER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-config
+                  key: server.port
+            # PostgreSQL настройки (как в docker-compose, но с другими hostname)
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://auth-postgres-service:5432/auth_db"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: postgres-username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: postgres-password
+            # Internal API Key
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: internal-api-key
+            # Для будущих сервисов
+            - name: USER_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-config
+                  key: user.service.url
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+
+spec:
+  template:
+    spec:
+      containers:
+        - name: authentication-service
+          image: your-registry/authentication-service:latest
+          env:
+            # 1. Активируем kubernetes профиль
+            - name: SPRING_PROFILES_ACTIVE
+              value: "kubernetes"
+
+            # 2. Переменные БД (ваш код уже использует ${SPRING_DATASOURCE_URL})
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://auth-postgres-service:5432/auth_db"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: postgres-username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: postgres-password
+
+            # 3. JWT Secret (ваш код использует ${jwt.secret})
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: jwt-secret
+
+            # 4. Internal API Key (ваш код использует ${internal.api.key})
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: internal-api-key
+
+            # 5. User Service URL (если нужно)
+            - name: USER_SERVICE_BASE_URL
+              value: "http://user-service:8080"

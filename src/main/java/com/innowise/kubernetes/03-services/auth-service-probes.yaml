@@ -1,0 +1,31 @@
+# Добавить в deployment.yaml в spec.template.spec.containers
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8081
+    httpHeaders:
+      - name: Custom-Header
+        value: Kubernetes-Liveness-Check
+  initialDelaySeconds: 90  # Дать время на запуск с БД
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8081
+  initialDelaySeconds: 30
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+  successThreshold: 1
+
+# Дополнительно: startup probe для медленного старта с БД
+startupProbe:
+  httpGet:
+    path: /actuator/health
+    port: 8081
+  failureThreshold: 30
+  periodSeconds: 10
