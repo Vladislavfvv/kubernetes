@@ -1,84 +1,86 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: authentication-service
+  name: user-service
   namespace: microservices
   labels:
-    app: authentication-service
+    app: user-service
     component: microservice
 spec:
-  replicas: 3  
+  replicas: 3
   selector:
     matchLabels:
-      app: authentication-service
+      app: user-service
   template:
     metadata:
       labels:
-        app: authentication-service
+        app: user-service
         component: microservice
     spec:
-      # Init container для ожидания БД (аналог depends_on в docker-compose)
+      # Init containers для ожидания зависимостей
       initContainers:
         - name: wait-for-database
           image: busybox:1.35
-          command: ['sh', '-c', 'until nc -z auth-postgres-service 5432; do echo "Waiting for PostgreSQL..."; sleep 2; done']
+          command: ['sh', '-c', 'until nc -z user-postgres-service 5432; do echo "Waiting for PostgreSQL..."; sleep 2; done']
+        - name: wait-for-redis
+          image: busybox:1.35
+          command: ['sh', '-c', 'until nc -z redis-service 6379; do echo "Waiting for Redis..."; sleep 2; done']
       containers:
-        - name: authentication-service
-          image: authentication-service:latest  # Локальный образ для Minikube
+        - name: user-service
+          image: user-service:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8081
+            - containerPort: 8080
               name: http
           env:
             # Конфигурация из ConfigMap
             - name: SPRING_PROFILES_ACTIVE
               valueFrom:
                 configMapKeyRef:
-                  name: auth-config
+                  name: user-config
                   key: spring.profiles.active
             - name: SERVER_PORT
               valueFrom:
                 configMapKeyRef:
-                  name: auth-config
+                  name: user-config
                   key: server.port
             # PostgreSQL настройки
             - name: SPRING_DATASOURCE_URL
-              value: "jdbc:postgresql://auth-postgres-service:5432/auth_db"
+              value: "jdbc:postgresql://user-postgres-service:5432/us_db"
             - name: SPRING_DATASOURCE_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: auth-secrets
+                  name: user-secrets
                   key: postgres-username
             - name: SPRING_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: auth-secrets
+                  name: user-secrets
                   key: postgres-password
-            # JWT Secret
+            # Redis настройки (для application-kubernetes.yml)
+            - name: SPRING_DATA_REDIS_HOST
+              value: "redis-service"
+            - name: SPRING_DATA_REDIS_PORT
+              value: "6379"
+            # JWT Secret (должен совпадать с auth-service)
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: auth-secrets
+                  name: user-secrets
                   key: jwt-secret
-            # Internal API Key
-            - name: INTERNAL_API_KEY
+            # Authentication Service Configuration
+            - name: AUTHENTICATION_SERVICE_BASE_URL
+              value: "http://authentication-service:8081"
+            - name: AUTHENTICATION_SERVICE_INTERNAL_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: auth-secrets
-                  key: internal-api-key
-            # User Service Configuration для автоматического создания профиля
-            - name: USER_SERVICE_BASE_URL
-              value: "http://user-service:8080"
-            - name: USER_SERVICE_INTERNAL_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: auth-secrets
+                  name: user-secrets
                   key: internal-api-key
           # Probes для Kubernetes
           startupProbe:
             httpGet:
               path: /actuator/health
-              port: 8081
+              port: 8080
             initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 5
@@ -87,7 +89,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /actuator/health
-              port: 8081
+              port: 8080
             initialDelaySeconds: 90
             periodSeconds: 10
             timeoutSeconds: 5
@@ -96,7 +98,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /actuator/health
-              port: 8081
+              port: 8080
             initialDelaySeconds: 30
             periodSeconds: 5
             timeoutSeconds: 3
@@ -109,3 +111,4 @@ spec:
             limits:
               memory: "1Gi"
               cpu: "500m"
+
