@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: microservices
+  labels:
+    app: order-service
+    component: microservice
+spec:
+  type: ClusterIP  # Для внутреннего доступа между сервисами, внешний доступ через Gateway / Ingress
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: order-service
+
+

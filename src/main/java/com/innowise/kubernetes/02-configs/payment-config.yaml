@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payment-config
+  namespace: microservices
+data:
+  # Settings for payment-service
+  spring.application.name: "payment-service"
+  server.port: "8085"
+
+  # Профиль Spring
+  spring.profiles.active: "kubernetes"
+
