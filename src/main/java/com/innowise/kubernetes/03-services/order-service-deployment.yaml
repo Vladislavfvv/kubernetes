@@ -64,6 +64,9 @@ spec:
                   name: order-secrets
                   key: jwt-secret
             # User Service Configuration
+            # Spring Boot конвертирует USER_SERVICE_API_KEY -> user.service.api.key
+            # Но в application-kubernetes.properties используется user.service.api-key (с дефисом)
+            # Используем SPRING_APPLICATION_JSON для правильного маппинга
             - name: USER_SERVICE_URL
               value: "http://user-service:8080"
             - name: USER_SERVICE_API_KEY
@@ -71,6 +74,8 @@ spec:
                 secretKeyRef:
                   name: order-secrets
                   key: user-service-api-key
+            - name: SPRING_APPLICATION_JSON
+              value: '{"user":{"service":{"api-key":"$(USER_SERVICE_API_KEY)"}}}'
             # Kafka Configuration
             - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
               value: "kafka-service:9093"
@@ -86,19 +91,19 @@ spec:
             successThreshold: 1
           livenessProbe:
             httpGet:
-              path: /actuator/health
+              path: /actuator/health/liveness
               port: 8080
             initialDelaySeconds: 90
-            periodSeconds: 10
+            periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3
             successThreshold: 1
           readinessProbe:
             httpGet:
-              path: /actuator/health
+              path: /actuator/health/readiness
               port: 8080
             initialDelaySeconds: 30
-            periodSeconds: 5
+            periodSeconds: 15
             timeoutSeconds: 3
             failureThreshold: 3
             successThreshold: 1

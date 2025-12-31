@@ -8,7 +8,7 @@ metadata:
     component: database
 spec:
   serviceName: order-postgres-service
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: order-postgres

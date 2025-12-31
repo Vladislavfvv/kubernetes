@@ -69,13 +69,16 @@ spec:
                   name: user-secrets
                   key: jwt-secret
             # Authentication Service Configuration
-            - name: AUTHENTICATION_SERVICE_BASE_URL
-              value: "http://authentication-service:8081"
+            # Spring Boot конвертирует AUTHENTICATION_SERVICE_INTERNAL_API_KEY -> authentication.service.internal.api.key
+            # Но в коде используется authentication.service.internal-api-key (с дефисом)
+            # Используем SPRING_APPLICATION_JSON для правильного маппинга
             - name: AUTHENTICATION_SERVICE_INTERNAL_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: user-secrets
                   key: internal-api-key
+            - name: SPRING_APPLICATION_JSON
+              value: '{"authentication":{"service":{"internal-api-key":"$(AUTHENTICATION_SERVICE_INTERNAL_API_KEY)"}}}'
           # Probes для Kubernetes
           startupProbe:
             httpGet:

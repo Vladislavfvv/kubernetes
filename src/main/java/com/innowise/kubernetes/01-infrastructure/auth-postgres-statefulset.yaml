@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: user-postgres
+  name: auth-postgres
   namespace: microservices
   labels:
-    app: user-postgres
+    app: auth-postgres
     component: database
 spec:
-  serviceName: user-postgres-service
+  serviceName: auth-postgres-service
   replicas: 1
   selector:
     matchLabels:
-      app: user-postgres
+      app: auth-postgres
   template:
     metadata:
       labels:
-        app: user-postgres
+        app: auth-postgres
         component: database
     spec:
       containers:
@@ -26,16 +26,16 @@ spec:
             name: postgres
         env:
         - name: POSTGRES_DB
-          value: "us_db"
+          value: "auth_db"
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
-              name: user-secrets
+              name: auth-secrets
               key: postgres-username
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: user-secrets
+              name: auth-secrets
               key: postgres-password
         # Health checks
         livenessProbe:
@@ -43,7 +43,7 @@ spec:
             command:
               - sh
               - -c
-              - pg_isready -U postgres -d us_db
+              - pg_isready -U postgres -d auth_db
           initialDelaySeconds: 20
           periodSeconds: 10
           timeoutSeconds: 5
@@ -53,12 +53,12 @@ spec:
             command:
               - sh
               - -c
-              - pg_isready -U postgres -d us_db
+              - pg_isready -U postgres -d auth_db
           initialDelaySeconds: 5
           periodSeconds: 5
           timeoutSeconds: 3
         volumeMounts:
-          - name: user-db-data
+          - name: auth-db-data
             mountPath: /var/lib/postgresql/data
             subPath: postgres
         resources:
@@ -70,7 +70,7 @@ spec:
             cpu: "500m"
   volumeClaimTemplates:
     - metadata:
-        name: user-db-data
+        name: auth-db-data
       spec:
         accessModes: ["ReadWriteOnce"]
         resources:

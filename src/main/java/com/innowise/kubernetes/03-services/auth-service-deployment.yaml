@@ -67,13 +67,17 @@ spec:
                   name: auth-secrets
                   key: internal-api-key
             # User Service Configuration для автоматического создания профиля
-            - name: USER_SERVICE_BASE_URL
-              value: "http://user-service:8080"
+            # Spring Boot конвертирует переменные окружения в свойства:
+            # USER_SERVICE_BASE_URL -> user.service.base.url (не base-url!)
+            # USER_SERVICE_INTERNAL_API_KEY -> user.service.internal.api.key (не internal-api-key!)
+            # Используем SPRING_APPLICATION_JSON для правильного маппинга свойств с дефисами
             - name: USER_SERVICE_INTERNAL_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: auth-secrets
                   key: internal-api-key
+            - name: SPRING_APPLICATION_JSON
+              value: '{"user":{"service":{"base-url":"http://user-service:8080","internal-api-key":"$(USER_SERVICE_INTERNAL_API_KEY)"}}}'
           # Probes для Kubernetes
           startupProbe:
             httpGet:
