@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: user-postgres
+  namespace: microservices
+  labels:
+    app: user-postgres
+    component: database
+spec:
+  serviceName: user-postgres-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-postgres
+  template:
+    metadata:
+      labels:
+        app: user-postgres
+        component: database
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:16
+        ports:
+          - containerPort: 5432
+            name: postgres
+        env:
+        - name: POSTGRES_DB
+          value: "us_db"
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: user-secrets
+              key: postgres-username
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: user-secrets
+              key: postgres-password
+        # Health checks
+        livenessProbe:
+          exec:
+            command:
+              - sh
+              - -c
+              - pg_isready -U postgres -d us_db
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 10
+        readinessProbe:
+          exec:
+            command:
+              - sh
+              - -c
+              - pg_isready -U postgres -d us_db
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+        volumeMounts:
+          - name: user-db-data
+            mountPath: /var/lib/postgresql/data
+            subPath: postgres
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+  volumeClaimTemplates:
+    - metadata:
+        name: user-db-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
+

@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authentication-service
+  namespace: microservices
+  labels:
+    app: authentication-service
+    component: microservice
+spec:
+  replicas: 3  
+  selector:
+    matchLabels:
+      app: authentication-service
+  template:
+    metadata:
+      labels:
+        app: authentication-service
+        component: microservice
+    spec:
+      # Init container для ожидания БД (аналог depends_on в docker-compose)
+      initContainers:
+        - name: wait-for-database
+          image: busybox:1.35
+          command: ['sh', '-c', 'until nc -z auth-postgres-service 5432; do echo "Waiting for PostgreSQL..."; sleep 2; done']
+      containers:
+        - name: authentication-service
+          image: authentication-service:latest  # Локальный образ для Minikube
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+              name: http
+          env:
+            # Конфигурация из ConfigMap
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-config
+                  key: spring.profiles.active
+            - name: SERVER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-config
+                  key: server.port
+            # PostgreSQL настройки
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://auth-postgres-service:5432/auth_db"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: postgres-username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: postgres-password
+            # JWT Secret
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: jwt-secret
+            # Internal API Key
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: internal-api-key
+            # User Service Configuration для автоматического создания профиля
+            # Spring Boot конвертирует переменные окружения в свойства:
+            # USER_SERVICE_BASE_URL -> user.service.base.url (не base-url!)
+            # USER_SERVICE_INTERNAL_API_KEY -> user.service.internal.api.key (не internal-api-key!)
+            # Используем SPRING_APPLICATION_JSON для правильного маппинга свойств с дефисами
+            - name: USER_SERVICE_INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: internal-api-key
+            - name: SPRING_APPLICATION_JSON
+              value: '{"user":{"service":{"base-url":"http://user-service:8080","internal-api-key":"$(USER_SERVICE_INTERNAL_API_KEY)"}}}'
+          # Probes для Kubernetes
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+            successThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 90
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+            successThreshold: 1
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"

@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: microservices
+  labels:
+    app: order-service
+    component: microservice
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+        component: microservice
+    spec:
+      # Init containers для ожидания зависимостей
+      initContainers:
+        - name: wait-for-database
+          image: busybox:1.35
+          command: ['sh', '-c', 'until nc -z order-postgres-service 5432; do echo "Waiting for PostgreSQL (order)..."; sleep 2; done']
+        - name: wait-for-kafka
+          image: busybox:1.35
+          command: ['sh', '-c', 'until nc -z kafka-service 9093; do echo "Waiting for Kafka..."; sleep 2; done']
+      containers:
+        - name: order-service
+          image: order-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            # Конфигурация из ConfigMap
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: order-config
+                  key: spring.profiles.active
+            - name: SERVER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: order-config
+                  key: server.port
+            # PostgreSQL настройки
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://order-postgres-service:5432/os_db"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: order-secrets
+                  key: postgres-username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: order-secrets
+                  key: postgres-password
+            # JWT Secret (должен совпадать с auth-service)
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: order-secrets
+                  key: jwt-secret
+            # User Service Configuration
+            # Spring Boot конвертирует USER_SERVICE_API_KEY -> user.service.api.key
+            # Но в application-kubernetes.properties используется user.service.api-key (с дефисом)
+            # Используем SPRING_APPLICATION_JSON для правильного маппинга
+            - name: USER_SERVICE_URL
+              value: "http://user-service:8080"
+            - name: USER_SERVICE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: order-secrets
+                  key: user-service-api-key
+            - name: SPRING_APPLICATION_JSON
+              value: '{"user":{"service":{"api-key":"$(USER_SERVICE_API_KEY)"}}}'
+            # Kafka Configuration
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka-service:9093"
+          # Probes для Kubernetes
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+            successThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+            successThreshold: 1
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+
+

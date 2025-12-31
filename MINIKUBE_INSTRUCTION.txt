@@ -1,0 +1,89 @@
+Для текущей работы программы
+1) Проверить статус minikube
+    minikube status
+
+2) Если остановлен - запустить
+    minikube start
+
+3) ingress-nginx запускается на порту 9090
+Проверяем свободен ли порт:
+    Get-NetTCPConnection -LocalPort 9090
+
+4) Проверьте Ingress (должен быть включен)
+   minikube addons list | Select-String "ingress"
+
+5) Если port-forward остановился, запустите снова:
+    kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 9090:80
+
+6) Проверьте все поды
+    kubectl get pods -n microservices
+или
+    kubectl get all -n microservices
+
+7) Проверить только одну поду
+    kubectl get pods -n microservices -l app=user-service
+
+8) Вывести логи для пода user-service
+    kubectl logs -f deployment/user-service -n microservices
+
+
+
+
+Настройка с нуля:
+
+# 1. Windows (через Chocolatey)
+choco install minikube
+
+# Или скачать с официального сайта
+# https://minikube.sigs.k8s.io/docs/start/
+
+
+# 2. Запуск с нужными аддонами новый minikube
+(задаем параметры оперативной памяти и занимаемый объем)
+minikube start --cpus=4 --memory=8192 --disk-size=20g
+
+# 3. Включить необходимые аддоны
+minikube addons enable ingress
+minikube addons enable metrics-server
+minikube addons enable dashboard
+
+# 4. Проверить статус
+minikube status
+
+# 5. Получить IP Minikube:
+   minikube ip
+
+# 6. Добавить в `C:\Windows\System32\drivers\etc\hosts` (замените IP на актуальный):
+   192.168.49.2 api.payments.local
+
+# 7. Создать namespace
+kubectl apply -f src/main/java/com/innowise/kubernetes/00-namespace/microservices.yaml
+
+# 8. Создать секреты и конфиги
+kubectl apply -f src/main/java/com/innowise/kubernetes/02-configs/auth-secrets.yaml
+kubectl apply -f src/main/java/com/innowise/kubernetes/02-configs/auth-config.yaml
+
+# 9. Деплой PostgreSQL
+kubectl apply -f src/main/java/com/innowise/kubernetes/01-infrastructure/postgres-service.yaml
+kubectl apply -f src/main/java/com/innowise/kubernetes/01-infrastructure/postgres-statefulset.yaml
+
+# 10. Ожидание готовности PostgreSQL
+kubectl wait --for=condition=ready pod -l app=auth-postgres -n microservices --timeout=300s
+
+# 11. Сборка образа в Minikube
+minikube docker-env | Invoke-Expression
+cd ..\auth-service\authentication-service
+docker build -t authentication-service:latest .
+cd ..\..\kubernetes
+
+# 12. Деплой authentication-service
+kubectl apply -f src/main/java/com/innowise/kubernetes/03-services/auth-service-service.yaml
+kubectl apply -f src/main/java/com/innowise/kubernetes/03-services/auth-service-deployment.yaml
+
+# 13. Ожидание готовности сервиса
+kubectl wait --for=condition=available deployment/authentication-service -n microservices --timeout=300s
+
+# 14. Деплой Ingress (опционально)
+kubectl apply -f src/main/java/com/innowise/kubernetes/04-ingress/auth-ingress.yaml
+
+# 15. Проверить работу сервисов через Postman
