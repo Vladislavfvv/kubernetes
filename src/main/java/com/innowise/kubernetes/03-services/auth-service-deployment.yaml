@@ -24,8 +24,8 @@ spec:
           command: ['sh', '-c', 'until nc -z auth-postgres-service 5432; do echo "Waiting for PostgreSQL..."; sleep 2; done']
       containers:
         - name: authentication-service
-          image: authentication-service:latest  # Локальный образ для Minikube
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/vladislavfvv/authentication-service:latest  # Образ из GitHub Container Registry
+          imagePullPolicy: IfNotPresent  # Загружать из registry если образа нет локально
           ports:
             - containerPort: 8081
               name: http

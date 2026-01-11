@@ -27,8 +27,8 @@ spec:
           command: ['sh', '-c', 'until nc -z redis-service 6379; do echo "Waiting for Redis..."; sleep 2; done']
       containers:
         - name: user-service
-          image: user-service:latest
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/vladislavfvv/user-service:latest  # Образ из GitHub Container Registry
+          imagePullPolicy: IfNotPresent  # Загружать из registry если образа нет локально
           ports:
             - containerPort: 8080
               name: http

@@ -17,8 +17,8 @@ spec:
     spec:
       containers:
         - name: gateway-service
-          image: gateway-service:latest
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/vladislavfvv/api-gateway:latest  # Образ из GitHub Container Registry
+          imagePullPolicy: IfNotPresent  # Загружать из registry если образа нет локально
           ports:
             - containerPort: 8084
               name: http

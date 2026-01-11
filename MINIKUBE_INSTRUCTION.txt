@@ -87,3 +87,17 @@ kubectl wait --for=condition=available deployment/authentication-service -n micr
 kubectl apply -f src/main/java/com/innowise/kubernetes/04-ingress/auth-ingress.yaml
 
 # 15. Проверить работу сервисов через Postman
+
+
+
+1. Пересобрать Docker образ:
+cd D:\JAVA\Innowise\Projects\28-11-2025\payment-service\paymentservicedocker build -t payment-service:latest .
+2. Загрузить образ в Minikube (если используете Minikube):
+minikube image load payment-service:latest
+Или использовать Docker registry (если настроен).
+3. Перезапустить deployment:
+kubectl rollout restart deployment/payment-service -n microservices
+Или применить deployment заново:
+kubectl apply -f D:\JAVA\Innowise\Projects\28-11-2025\kubernetes\src\main\java\com\innowise\kubernetes\03-services\payment-service-deployment.yaml
+4. Проверить статус:
+kubectl get pods -n microservices -l app=payment-servicekubectl logs -n microservices -l app=payment-service --tail=50

@@ -27,8 +27,8 @@ spec:
           command: ['sh', '-c', 'until nc -z kafka-service 9093; do echo "Waiting for Kafka..."; sleep 2; done']
       containers:
         - name: payment-service
-          image: payment-service:latest
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/vladislavfvv/payment-service:latest  # Образ из GitHub Container Registry
+          imagePullPolicy: IfNotPresent  # Загружать из registry если образа нет локально
           ports:
             - containerPort: 8085
               name: http
