@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: authentication-service
+  namespace: microservices
+  labels:
+    app: authentication-service
+    type: microservice
+spec:
+  selector:
+    app: authentication-service
+  ports:
+    - name: http
+      port: 8081           # Внутренний порт сервиса
+      targetPort: 8081     # Порт контейнера
+      protocol: TCP
+  type: ClusterIP  # Для внутреннего доступа между сервисами, внешний доступ через Ingress

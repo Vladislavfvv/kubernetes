@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-config
+  namespace: microservices
+data:
+  # Settings for gateway-service
+  spring.application.name: "api-gateway"
+  server.port: "8084"
+  
+  # Профиль Spring
+  spring.profiles.active: "kubernetes"
+  
+  # URL-адреса микросервисов в Kubernetes (через Service names)
+  services.auth.url: "http://authentication-service:8081"
+  services.user.url: "http://user-service:8080"
+  services.order.url: "http://order-service:8080"
+  services.payment.url: "http://payment-service:8085"
+  
+  # Management endpoints для Kubernetes Probes
+  management.endpoints.web.exposure.include: "health,info,liveness,readiness"
+  management.endpoint.health.show-details: "always"
+  management.endpoint.health.probes.enabled: "true"
+
